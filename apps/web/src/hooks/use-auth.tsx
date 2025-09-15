@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        credentials: 'include', // Include cookies in the request
       })
 
       if (!response.ok) {
@@ -65,6 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       localStorage.setItem('accessToken', data.data.accessToken)
       localStorage.setItem('refreshToken', data.data.refreshToken)
+      
+      // Also set cookies for middleware
+      document.cookie = `accessToken=${data.data.accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=strict`
       
       setUser(data.data.user)
       setOrganizations(data.data.organizations)
@@ -84,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(registerData),
+        credentials: 'include', // Include cookies in the request
       })
 
       if (!response.ok) {
@@ -94,6 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       localStorage.setItem('accessToken', data.data.accessToken)
       localStorage.setItem('refreshToken', data.data.refreshToken)
+      
+      // Also set cookies for middleware
+      document.cookie = `accessToken=${data.data.accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=strict`
       
       setUser(data.data.user)
       setOrganizations(data.data.organizations)
@@ -109,6 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // TODO: Call logout API
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
+      
+      // Clear cookies
+      document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
       
       setUser(null)
       setOrganizations([])
