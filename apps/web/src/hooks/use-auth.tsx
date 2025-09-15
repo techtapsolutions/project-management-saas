@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { AuthUser, AuthOrganization } from '@projectmgmt/shared'
+import { apiRequest } from '../lib/api-client'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -48,14 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      // TODO: Implement actual API call
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+      const response = await apiRequest('api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ email, password }),
-        credentials: 'include', // Include cookies in the request
       })
 
       if (!response.ok) {
@@ -81,14 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (registerData: any) => {
     setIsLoading(true)
     try {
-      // TODO: Implement actual API call
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
+      const response = await apiRequest('api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(registerData),
-        credentials: 'include', // Include cookies in the request
       })
 
       if (!response.ok) {

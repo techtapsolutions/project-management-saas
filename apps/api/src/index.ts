@@ -50,10 +50,30 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 // Logging
 app.use(morgan(config.logging.format))
 
+// Root redirect - prevent unnecessary redirects
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'ProjectMgmt API', 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      users: '/api/users',
+      organizations: '/api/organizations',
+      projects: '/api/projects',
+      tasks: '/api/tasks'
+    }
+  })
+})
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
+
+// Handle preflight requests explicitly
+app.options('*', cors())
 
 // API routes
 app.use('/api/auth', authRoutes)
