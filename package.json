@@ -1,0 +1,40 @@
+{
+  "name": "project-management-saas",
+  "version": "1.0.0",
+  "description": "Modern project management SaaS application similar to Smartsheet",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "build:web": "cd apps/web && npm install && npm run build",
+    "build:api": "cd apps/api && npm install && npm run build",
+    "start:web": "cd apps/web && npm start",
+    "start:api": "cd apps/api && npm start",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:generate": "cd packages/database && npm run db:generate",
+    "db:push": "cd packages/database && npm run db:push",
+    "db:migrate": "cd packages/database && npm run db:migrate",
+    "db:studio": "cd packages/database && npm run db:studio",
+    "setup": "npm install && npm run db:generate && npm run db:push && echo '✅ Setup complete! Run npm run dev to start development servers.'",
+    "railway:setup": "npm install && npm run db:generate"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "turbo": "^1.11.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "packageManager": "npm@8.19.2"
+}

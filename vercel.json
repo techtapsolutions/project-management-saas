@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/api/package.json",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "apps/api/src/index.js"
+    }
+  ],
+  "functions": {
+    "apps/api/src/index.js": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "JWT_SECRET": "@jwt_secret", 
+    "JWT_REFRESH_SECRET": "@jwt_refresh_secret",
+    "NODE_ENV": "production"
+  }
+}

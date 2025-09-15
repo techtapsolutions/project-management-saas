@@ -1,0 +1,563 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core User Management
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  website     String?
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users            OrganizationUser[]
+  projects         Project[]
+  roles            Role[]
+  invitations      Invitation[]
+  ssoConnections   SSOConnection[]
+  subscriptions    Subscription[]
+  auditLogs        AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  firstName     String
+  lastName      String
+  avatarUrl     String?
+  title         String?
+  phone         String?
+  timezone      String    @default("UTC")
+  locale        String    @default("en")
+  settings      Json      @default("{}")
+  lastLoginAt   DateTime?
+  emailVerified Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Authentication
+  password     UserPassword?
+  sessions     Session[]
+  refreshTokens RefreshToken[]
+
+  // Relations
+  organizations    OrganizationUser[]
+  projectMembers   ProjectMember[]
+  taskAssignments  TaskAssignment[]
+  comments         Comment[]
+  files            File[]
+  notifications    Notification[]
+  activityLogs     ActivityLog[]
+  createdProjects  Project[]      @relation("ProjectCreator")
+  createdTasks     Task[]         @relation("TaskCreator")
+  invitationsSent  Invitation[]   @relation("InvitationSender")
+  
+  @@map("users")
+}
+
+model UserPassword {
+  id           String @id @default(cuid())
+  userId       String @unique
+  passwordHash String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_passwords")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("refresh_tokens")
+}
+
+// Role-Based Access Control
+model Role {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  permissions    Json     @default("{}")
+  isSystemRole   Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users        OrganizationUser[]
+
+  @@unique([organizationId, name])
+  @@map("roles")
+}
+
+model OrganizationUser {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  roleId         String
+  status         String   @default("active") // active, inactive, pending
+  joinedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@map("organization_users")
+}
+
+model Invitation {
+  id             String    @id @default(cuid())
+  organizationId String
+  email          String
+  roleId         String
+  invitedById    String
+  token          String    @unique
+  status         String    @default("pending") // pending, accepted, expired, revoked
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("InvitationSender", fields: [invitedById], references: [id])
+
+  @@map("invitations")
+}
+
+// SSO Configuration
+model SSOConnection {
+  id             String @id @default(cuid())
+  organizationId String
+  provider       String // saml, oidc, oauth2
+  name           String
+  config         Json
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, name])
+  @@map("sso_connections")
+}
+
+// Project Management Core
+model Project {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  slug           String
+  status         String    @default("active") // active, on_hold, completed, archived
+  priority       String    @default("medium") // low, medium, high, critical
+  startDate      DateTime?
+  endDate        DateTime?
+  budget         Decimal?  @db.Decimal(10, 2)
+  currency       String?   @default("USD")
+  settings       Json      @default("{}")
+  createdById    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User            @relation("ProjectCreator", fields: [createdById], references: [id])
+  members      ProjectMember[]
+  tasks        Task[]
+  files        File[]
+  comments     Comment[]
+  risks        Risk[]
+  issues       Issue[]
+  meetings     Meeting[]
+  milestones   Milestone[]
+  boards       Board[]
+
+  @@unique([organizationId, slug])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String   @default("member") // admin, manager, member, viewer
+  joinedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+// Task Management
+model Task {
+  id          String    @id @default(cuid())
+  projectId   String
+  parentId    String?   // For subtasks
+  title       String
+  description String?
+  status      String    @default("todo") // todo, in_progress, review, done, blocked
+  priority    String    @default("medium") // low, medium, high, critical
+  startDate   DateTime?
+  dueDate     DateTime?
+  estimatedHours Decimal? @db.Decimal(5, 2)
+  actualHours    Decimal? @db.Decimal(5, 2)
+  tags        String[]  @default([])
+  position    Int?      // For ordering in lists/boards
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      Task?            @relation("TaskHierarchy", fields: [parentId], references: [id])
+  subtasks    Task[]           @relation("TaskHierarchy")
+  createdBy   User             @relation("TaskCreator", fields: [createdById], references: [id])
+  assignments TaskAssignment[]
+  comments    Comment[]
+  files       File[]
+  dependencies TaskDependency[] @relation("DependentTask")
+  dependents   TaskDependency[] @relation("RequiredTask")
+  timeEntries  TimeEntry[]
+
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id       String @id @default(cuid())
+  taskId   String
+  userId   String
+  role     String @default("assignee") // assignee, reviewer, observer
+  assignedAt DateTime @default(now())
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@map("task_assignments")
+}
+
+model TaskDependency {
+  id             String @id @default(cuid())
+  dependentTaskId String
+  requiredTaskId  String
+  type           String @default("finish_to_start") // finish_to_start, start_to_start, finish_to_finish, start_to_finish
+  lag            Int    @default(0) // Days of lag/lead time
+  createdAt      DateTime @default(now())
+
+  // Relations
+  dependentTask Task @relation("DependentTask", fields: [dependentTaskId], references: [id], onDelete: Cascade)
+  requiredTask  Task @relation("RequiredTask", fields: [requiredTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([dependentTaskId, requiredTaskId])
+  @@map("task_dependencies")
+}
+
+// Time Tracking
+model TimeEntry {
+  id          String    @id @default(cuid())
+  taskId      String
+  userId      String
+  description String?
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?      // Minutes
+  isRunning   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("time_entries")
+}
+
+// Risk and Issue Management
+model Risk {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  description String
+  category    String   // technical, business, resource, external
+  probability Int      // 1-5 scale
+  impact      Int      // 1-5 scale
+  score       Int      // calculated: probability * impact
+  status      String   @default("open") // open, monitoring, closed, realized
+  mitigation  String?
+  owner       String?
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("risks")
+}
+
+model Issue {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  description String
+  severity    String   @default("medium") // low, medium, high, critical
+  status      String   @default("open") // open, in_progress, resolved, closed
+  assigneeId  String?
+  reporterId  String
+  resolution  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("issues")
+}
+
+// Kanban Boards
+model Board {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  type      String   @default("kanban") // kanban, scrum
+  settings  Json     @default("{}")
+  position  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  columns BoardColumn[]
+
+  @@map("boards")
+}
+
+model BoardColumn {
+  id       String @id @default(cuid())
+  boardId  String
+  name     String
+  color    String @default("#gray")
+  position Int
+  limit    Int?   // WIP limit
+  settings Json   @default("{}")
+
+  // Relations
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@map("board_columns")
+}
+
+// Calendar and Meetings
+model Meeting {
+  id          String   @id @default(cuid())
+  projectId   String?
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  meetingUrl  String?
+  agenda      String?
+  notes       String?
+  status      String   @default("scheduled") // scheduled, in_progress, completed, cancelled
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project?           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  attendees   MeetingAttendee[]
+  files       File[]
+
+  @@map("meetings")
+}
+
+model MeetingAttendee {
+  id        String   @id @default(cuid())
+  meetingId String
+  userId    String
+  status    String   @default("invited") // invited, accepted, declined, tentative
+  role      String   @default("attendee") // organizer, attendee, optional
+  joinedAt  DateTime @default(now())
+
+  // Relations
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@map("meeting_attendees")
+}
+
+// Milestones
+model Milestone {
+  id          String    @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  dueDate     DateTime
+  status      String    @default("pending") // pending, achieved, missed
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("milestones")
+}
+
+// File Management
+model File {
+  id         String   @id @default(cuid())
+  name       String
+  originalName String
+  mimeType   String
+  size       Int
+  url        String
+  uploaderId String
+  projectId  String?
+  taskId     String?
+  meetingId  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  uploader User     @relation(fields: [uploaderId], references: [id])
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task     Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  meeting  Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@map("files")
+}
+
+// Comments and Communication
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  authorId  String
+  projectId String?
+  taskId    String?
+  parentId  String?  // For replies
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  author   User      @relation(fields: [authorId], references: [id])
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task     Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+// Notifications
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // task_assigned, deadline_approaching, project_update, etc.
+  title     String
+  message   String
+  data      Json?    @default("{}")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// Activity Logging
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  entityType String   // project, task, user, etc.
+  entityId   String
+  action     String   // created, updated, deleted, etc.
+  details    Json?    @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+// Audit Logging
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         String
+  resource       String
+  resourceId     String?
+  changes        Json?    @default("{}")
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+// Subscription and Billing
+model Subscription {
+  id               String    @id @default(cuid())
+  organizationId   String    @unique
+  plan             String    // free, pro, enterprise
+  status           String    // active, cancelled, past_due, etc.
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean @default(false)
+  stripeSubscriptionId String?
+  stripeCustomerId     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
