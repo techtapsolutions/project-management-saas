@@ -1,19 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
   transpilePackages: ['@projectmgmt/ui', '@projectmgmt/shared'],
   images: {
     domains: ['localhost'],
   },
-  // Enable standalone output for Vercel deployment
+  // Enable standalone output for Railway deployment
   output: 'standalone',
-  // Optimize for Vercel edge functions
+  // Environment variables
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
-  // Vercel-specific optimizations
+  // Production optimizations
   poweredByHeader: false,
   generateEtags: false,
   compress: true,

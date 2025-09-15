@@ -772,6 +772,7 @@ export async function getTaskComments(req: AuthenticatedRequest, res: Response) 
     prisma.comment.findMany({
       where: {
         taskId: id,
+        parentId: null, // Only root comments, replies are included
       },
       include: {
         author: {
@@ -797,10 +798,6 @@ export async function getTaskComments(req: AuthenticatedRequest, res: Response) 
             createdAt: 'asc',
           },
         },
-      },
-      where: {
-        taskId: id,
-        parentId: null, // Only root comments, replies are included
       },
       orderBy: {
         createdAt: 'desc',
