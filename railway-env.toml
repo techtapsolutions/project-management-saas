@@ -1,0 +1,36 @@
+# Railway Environment Configuration
+# This file contains the environment-specific settings for Railway deployment
+
+[services.web]
+# Web service environment variables
+NEXT_PUBLIC_API_URL = "https://projectmgmt-api-production.up.railway.app"
+NEXT_PUBLIC_APP_NAME = "ProjectMgmt"
+NEXT_PUBLIC_APP_URL = "https://projectmgmt-web-production.up.railway.app"
+NEXT_PUBLIC_ENABLE_ANALYTICS = "true"
+NEXT_PUBLIC_ENABLE_DEBUG = "false"
+
+[services.api]
+# API service environment variables
+NODE_ENV = "production"
+PORT = "3001"
+ALLOWED_ORIGINS = "https://projectmgmt-web-production.up.railway.app,https://projectmgmt-api-production.up.railway.app"
+JWT_EXPIRES_IN = "15m"
+JWT_REFRESH_EXPIRES_IN = "7d"
+LOG_LEVEL = "info"
+LOG_FORMAT = "combined"
+BCRYPT_ROUNDS = "12"
+STORAGE_PROVIDER = "local"
+UPLOAD_DIR = "./uploads"
+
+# Note: The following variables should be set in Railway dashboard:
+# DATABASE_URL (provided by Railway PostgreSQL)
+# REDIS_URL (provided by Railway Redis)
+# JWT_SECRET (generate with: openssl rand -hex 32)
+# JWT_REFRESH_SECRET (generate with: openssl rand -hex 32)
+# SESSION_SECRET (generate with: openssl rand -hex 32)
+# EMAIL_FROM
+# SMTP_HOST
+# SMTP_PORT
+# SMTP_SECURE
+# SMTP_USER
+# SMTP_PASS
