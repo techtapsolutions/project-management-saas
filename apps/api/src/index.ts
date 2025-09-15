@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit'
 import { config } from './config'
 import { errorHandler } from './middleware/error-handler'
 import { notFoundHandler } from './middleware/not-found'
+import { corsDebugMiddleware, corsFallbackHandler } from './middleware/cors-debug'
 
 // Import routes
 import authRoutes from './routes/auth'
@@ -13,26 +14,70 @@ import userRoutes from './routes/users'
 import organizationRoutes from './routes/organizations'
 import projectRoutes from './routes/projects'
 import taskRoutes from './routes/tasks'
+import corsTestRoutes from './routes/cors-test'
 
 const app = express()
 
-// Security middleware
-app.use(helmet())
-app.use(cors({
+// Log CORS configuration on startup for debugging
+console.log('🔧 CORS Configuration:', {
+  allowedOrigins: config.cors.allowedOrigins,
+  environment: config.env,
+  rawEnv: process.env.ALLOWED_ORIGINS
+})
+
+// Configure CORS with robust settings for Railway
+const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or postman)
-    if (!origin) return callback(null, true)
+    // Log every CORS request for debugging
+    console.log(`CORS request from origin: ${origin || 'no-origin'}`)
+    
+    // Allow requests with no origin (like mobile apps, Postman, or server-to-server)
+    if (!origin) {
+      return callback(null, true)
+    }
     
     // Check if the origin is in the allowed list
-    if (config.cors.allowedOrigins.includes(origin)) {
+    const isAllowed = config.cors.allowedOrigins.some(allowedOrigin => {
+      // Exact match or remove trailing slash for comparison
+      return origin === allowedOrigin || 
+             origin === allowedOrigin.replace(/\/$/, '') ||
+             origin.replace(/\/$/, '') === allowedOrigin.replace(/\/$/, '')
+    })
+    
+    if (isAllowed) {
+      console.log(`✅ CORS allowed for origin: ${origin}`)
       callback(null, true)
     } else {
-      callback(new Error('Not allowed by CORS'))
+      console.error(`❌ CORS blocked for origin: ${origin}`)
+      console.error(`Allowed origins: ${config.cors.allowedOrigins.join(', ')}`)
+      callback(new Error(`CORS: Origin ${origin} not allowed`))
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Per-Page'],
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}
+
+// Add CORS debug middleware first (for logging)
+app.use(corsDebugMiddleware)
+
+// Apply CORS middleware first, before any other middleware
+app.use(cors(corsOptions))
+
+// Handle preflight requests explicitly for all routes
+app.options('*', cors(corsOptions))
+
+// Add fallback CORS handler for Railway edge cases
+app.use(corsFallbackHandler)
+
+// Security middleware (after CORS to ensure headers are set)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }))
 
 // Rate limiting
@@ -67,13 +112,20 @@ app.get('/', (req, res) => {
   })
 })
 
-// Health check
+// Health check with CORS debugging info
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    cors: {
+      allowedOrigins: config.cors.allowedOrigins,
+      requestOrigin: req.headers.origin || 'no-origin'
+    }
+  })
 })
 
-// Handle preflight requests explicitly
-app.options('*', cors())
+// CORS test routes (for debugging)
+app.use('/api/cors', corsTestRoutes)
 
 // API routes
 app.use('/api/auth', authRoutes)

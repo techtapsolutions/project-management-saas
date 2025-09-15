@@ -18,8 +18,13 @@ export function errorHandler(
   let message = 'Internal server error'
   let errors: any[] = []
 
+  // Check if it's a CORS error
+  if (err.message && err.message.includes('CORS')) {
+    statusCode = 403
+    message = err.message
+  }
   // Zod validation errors
-  if (err instanceof ZodError) {
+  else if (err instanceof ZodError) {
     statusCode = 400
     message = 'Validation failed'
     errors = err.errors.map(error => ({
@@ -70,7 +75,25 @@ export function errorHandler(
       method: req.method,
       ip: req.ip,
       userAgent: req.get('User-Agent'),
+      origin: req.get('Origin'),
     })
+  }
+
+  // Ensure CORS headers are set even on error responses
+  const origin = req.get('Origin')
+  if (origin) {
+    // Get allowed origins from environment
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || []
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      return origin === allowedOrigin || 
+             origin === allowedOrigin.replace(/\/$/, '') ||
+             origin.replace(/\/$/, '') === allowedOrigin.replace(/\/$/, '')
+    })
+    
+    if (isAllowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin)
+      res.setHeader('Access-Control-Allow-Credentials', 'true')
+    }
   }
 
   res.status(statusCode).json({
