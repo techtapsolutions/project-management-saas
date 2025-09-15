@@ -13,7 +13,7 @@ cmds = [
 ]
 
 [start]
-cmd = 'npm start'
+cmd = 'cd apps/api && npm start'
 
 [variables]
 NODE_ENV = 'production'
