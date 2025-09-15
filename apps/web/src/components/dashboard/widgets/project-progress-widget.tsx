@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Progress } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 
 interface ProjectProgress {
   id: string
@@ -86,7 +86,7 @@ export function ProjectProgressWidget() {
   if (!projects || projects.length === 0) {
     return (
       <div className="text-center py-8">
-        <Progress className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+        <BarChart3 className="h-8 w-8 text-gray-400 mx-auto mb-2" />
         <div className="text-gray-500 dark:text-gray-400">
           No projects to track
         </div>

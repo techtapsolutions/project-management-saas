@@ -27,51 +27,53 @@ export function UpcomingDeadlinesWidget() {
     queryFn: async (): Promise<Deadline[]> => {
       // TODO: Replace with actual API call
       const now = new Date()
-      return [
+      const deadlines: Deadline[] = [
         {
           id: '1',
           title: 'Complete user authentication',
-          type: 'task',
+          type: 'task' as const,
           dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(), // Tomorrow
           project: { id: '1', name: 'Web App Redesign' },
           assignee: { id: '1', name: 'Alice Johnson' },
-          status: 'pending',
+          status: 'pending' as const,
         },
         {
           id: '2',
           title: 'Design review milestone',
-          type: 'milestone',
+          type: 'milestone' as const,
           dueDate: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(), // 2 days
           project: { id: '1', name: 'Web App Redesign' },
-          status: 'pending',
+          status: 'pending' as const,
         },
         {
           id: '3',
           title: 'API integration testing',
-          type: 'task',
+          type: 'task' as const,
           dueDate: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(), // 12 hours ago (overdue)
           project: { id: '2', name: 'Mobile App' },
           assignee: { id: '2', name: 'Bob Smith' },
-          status: 'overdue',
+          status: 'overdue' as const,
         },
         {
           id: '4',
           title: 'Marketing campaign launch',
-          type: 'project',
+          type: 'project' as const,
           dueDate: new Date(Date.now() + 1000 * 60 * 60 * 96).toISOString(), // 4 days
           project: { id: '3', name: 'Marketing Campaign' },
-          status: 'pending',
+          status: 'pending' as const,
         },
         {
           id: '5',
           title: 'Database migration',
-          type: 'task',
+          type: 'task' as const,
           dueDate: new Date(Date.now() + 1000 * 60 * 60 * 6).toISOString(), // 6 hours
           project: { id: '2', name: 'Mobile App' },
           assignee: { id: '3', name: 'Carol Davis' },
-          status: 'pending',
+          status: 'pending' as const,
         },
-      ].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      ]
+      
+      return deadlines.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     },
   })
 
