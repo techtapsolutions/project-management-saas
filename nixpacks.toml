@@ -1,0 +1,24 @@
+# Root-level nixpacks.toml for Railway deployment
+# This tells Railway how to build the monorepo
+
+[phases.setup]
+nixPkgs = ['nodejs-18_x', 'npm-9_x']
+
+[phases.install]
+cmds = [
+  'npm ci',
+  'cd packages/database && npm run db:generate'
+]
+
+[phases.build]
+cmds = [
+  'npm run build:api',
+  'npm run build:web'
+]
+
+[start]
+# This will be overridden by individual services
+cmd = 'echo "Root nixpacks - should not be used"'
+
+[variables]
+NODE_ENV = 'production'
